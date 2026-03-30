@@ -1,0 +1,334 @@
+/* ============================================
+   window-manager.js - Quản lý cửa sổ
+   Tạo, kéo, resize, minimize, maximize, close
+   ============================================ */
+
+const WindowManager = {
+    windows: {},   // id -> window data
+    zCounter: 100, // z-index counter
+    activeId: null,
+    dragState: null,
+    resizeState: null,
+
+    /**
+     * Khởi tạo event listeners
+     */
+    init() {
+        document.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.onMouseUp(e));
+        document.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
+        document.addEventListener('touchend', (e) => this.onTouchEnd(e));
+    },
+
+    /**
+     * Tạo cửa sổ mới
+     */
+    create(appId, title, contentHTML, options = {}) {
+        const id = 'win-' + Utils.uid();
+        const isMobile = window.innerWidth <= 480;
+
+        const w = options.width || (isMobile ? window.innerWidth : 700);
+        const h = options.height || (isMobile ? window.innerHeight - 28 : 500);
+        const x = isMobile ? 0 : (options.x ?? Utils.randInt(50, Math.max(100, window.innerWidth - w - 50)));
+        const y = isMobile ? 28 : (options.y ?? Utils.randInt(40, Math.max(50, window.innerHeight - h - 100)));
+
+        const winEl = document.createElement('div');
+        winEl.className = 'window active';
+        winEl.id = id;
+        winEl.style.cssText = `width:${w}px;height:${h}px;left:${x}px;top:${y}px;z-index:${++this.zCounter};animation:scaleIn 0.25s ease`;
+
+        winEl.innerHTML = `
+            <div class="window-titlebar" data-winid="${id}">
+                <div class="window-controls">
+                    <button class="window-btn close" data-action="close" data-winid="${id}"></button>
+                    <button class="window-btn minimize" data-action="minimize" data-winid="${id}"></button>
+                    <button class="window-btn maximize" data-action="maximize" data-winid="${id}"></button>
+                </div>
+                <span class="window-title">${title}</span>
+            </div>
+            <div class="window-body" id="${id}-body">${contentHTML}</div>
+            <div class="window-resize" data-winid="${id}"></div>
+        `;
+
+        document.getElementById('windows-container').appendChild(winEl);
+
+        // Lưu dữ liệu
+        this.windows[id] = {
+            id, appId, title, el: winEl,
+            x, y, w, h,
+            minimized: false, maximized: false,
+            prevX: x, prevY: y, prevW: w, prevH: h
+        };
+
+        // Events
+        this.bindWindowEvents(id);
+        this.setActive(id);
+
+        // Cập nhật menu bar tên app
+        const appDef = DATA.appDefs[appId];
+        if (appDef) {
+            document.getElementById('menu-app-name').textContent = appDef.name;
+        }
+
+        return id;
+    },
+
+    /**
+     * Bind events cho cửa sổ
+     */
+    bindWindowEvents(id) {
+        const win = this.windows[id];
+        const el = win.el;
+
+        // Click để focus
+        el.addEventListener('mousedown', () => this.setActive(id));
+        el.addEventListener('touchstart', () => this.setActive(id));
+
+        // Nút điều khiển
+        el.querySelectorAll('.window-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                if (action === 'close') this.close(id);
+                else if (action === 'minimize') this.minimize(id);
+                else if (action === 'maximize') this.toggleMaximize(id);
+            });
+        });
+
+        // Kéo titlebar
+        const titlebar = el.querySelector('.window-titlebar');
+        titlebar.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('window-btn')) return;
+            this.startDrag(id, e.clientX, e.clientY);
+        });
+        titlebar.addEventListener('touchstart', (e) => {
+            if (e.target.classList.contains('window-btn')) return;
+            const t = e.touches[0];
+            this.startDrag(id, t.clientX, t.clientY);
+        });
+
+        // Double-click titlebar → maximize
+        titlebar.addEventListener('dblclick', () => this.toggleMaximize(id));
+
+        // Resize handle
+        const resizeHandle = el.querySelector('.window-resize');
+        resizeHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            this.startResize(id, e.clientX, e.clientY);
+        });
+        resizeHandle.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            const t = e.touches[0];
+            this.startResize(id, t.clientX, t.clientY);
+        });
+    },
+
+    /**
+     * Đặt cửa sổ active
+     */
+    setActive(id) {
+        if (this.activeId === id) return;
+
+        // Bỏ active cũ
+        Object.values(this.windows).forEach(w => w.el.classList.remove('active'));
+
+        if (this.windows[id]) {
+            this.windows[id].el.classList.add('active');
+            this.windows[id].el.style.zIndex = ++this.zCounter;
+            this.activeId = id;
+
+            const appDef = DATA.appDefs[this.windows[id].appId];
+            if (appDef) {
+                document.getElementById('menu-app-name').textContent = appDef.name;
+            }
+        }
+    },
+
+    /**
+     * Đóng cửa sổ
+     */
+    close(id) {
+        const win = this.windows[id];
+        if (!win) return;
+
+        win.el.style.animation = 'none';
+        win.el.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+        win.el.style.transform = 'scale(0.8)';
+        win.el.style.opacity = '0';
+
+        setTimeout(() => {
+            win.el.remove();
+            delete this.windows[id];
+
+            // Thông báo AppManager
+            AppManager.onWindowClose(win.appId);
+
+            // Focus cửa sổ khác nếu có
+            const remaining = Object.keys(this.windows);
+            if (remaining.length > 0) {
+                this.setActive(remaining[remaining.length - 1]);
+            } else {
+                this.activeId = null;
+                document.getElementById('menu-app-name').textContent = 'Finder';
+            }
+        }, 200);
+    },
+
+    /**
+     * Thu nhỏ cửa sổ
+     */
+    minimize(id) {
+        const win = this.windows[id];
+        if (!win) return;
+        win.minimized = true;
+        win.el.classList.add('minimized');
+
+        const remaining = Object.values(this.windows).filter(w => !w.minimized);
+        if (remaining.length > 0) {
+            this.setActive(remaining[remaining.length - 1].id);
+        } else {
+            this.activeId = null;
+            document.getElementById('menu-app-name').textContent = 'Finder';
+        }
+    },
+
+    /**
+     * Khôi phục từ minimize
+     */
+    restore(id) {
+        const win = this.windows[id];
+        if (!win) return;
+        win.minimized = false;
+        win.el.classList.remove('minimized');
+        this.setActive(id);
+    },
+
+    /**
+     * Toggle maximize
+     */
+    toggleMaximize(id) {
+        const win = this.windows[id];
+        if (!win) return;
+
+        if (win.maximized) {
+            win.maximized = false;
+            win.el.classList.remove('maximized');
+            win.el.style.left = win.prevX + 'px';
+            win.el.style.top = win.prevY + 'px';
+            win.el.style.width = win.prevW + 'px';
+            win.el.style.height = win.prevH + 'px';
+        } else {
+            win.prevX = parseInt(win.el.style.left);
+            win.prevY = parseInt(win.el.style.top);
+            win.prevW = parseInt(win.el.style.width);
+            win.prevH = parseInt(win.el.style.height);
+            win.maximized = true;
+            win.el.classList.add('maximized');
+        }
+    },
+
+    /**
+     * Bắt đầu kéo
+     */
+    startDrag(id, clientX, clientY) {
+        const win = this.windows[id];
+        if (!win || win.maximized) return;
+
+        this.dragState = {
+            id,
+            startX: clientX,
+            startY: clientY,
+            origX: parseInt(win.el.style.left),
+            origY: parseInt(win.el.style.top)
+        };
+    },
+
+    /**
+     * Bắt đầu resize
+     */
+    startResize(id, clientX, clientY) {
+        const win = this.windows[id];
+        if (!win || win.maximized) return;
+
+        this.resizeState = {
+            id,
+            startX: clientX,
+            startY: clientY,
+            origW: parseInt(win.el.style.width),
+            origH: parseInt(win.el.style.height)
+        };
+    },
+
+    /**
+     * Mouse/Touch move
+     */
+    onMouseMove(e) {
+        if (this.dragState) {
+            const dx = e.clientX - this.dragState.startX;
+            const dy = e.clientY - this.dragState.startY;
+            const win = this.windows[this.dragState.id];
+            if (win) {
+                win.el.style.left = (this.dragState.origX + dx) + 'px';
+                win.el.style.top = Math.max(28, this.dragState.origY + dy) + 'px';
+            }
+        }
+        if (this.resizeState) {
+            const dx = e.clientX - this.resizeState.startX;
+            const dy = e.clientY - this.resizeState.startY;
+            const win = this.windows[this.resizeState.id];
+            if (win) {
+                win.el.style.width = Math.max(320, this.resizeState.origW + dx) + 'px';
+                win.el.style.height = Math.max(200, this.resizeState.origH + dy) + 'px';
+            }
+        }
+    },
+
+    onTouchMove(e) {
+        if (this.dragState || this.resizeState) {
+            e.preventDefault();
+            const t = e.touches[0];
+            this.onMouseMove({ clientX: t.clientX, clientY: t.clientY });
+        }
+    },
+
+    onMouseUp() {
+        this.dragState = null;
+        this.resizeState = null;
+    },
+
+    onTouchEnd() {
+        this.dragState = null;
+        this.resizeState = null;
+    },
+
+    /**
+     * Đóng tất cả cửa sổ
+     */
+    closeAll() {
+        Object.keys(this.windows).forEach(id => {
+            this.windows[id].el.remove();
+            delete this.windows[id];
+        });
+        this.activeId = null;
+    },
+
+    /**
+     * Tìm cửa sổ theo appId
+     */
+    findByApp(appId) {
+        return Object.values(this.windows).find(w => w.appId === appId);
+    },
+
+    /**
+     * Focus hoặc restore cửa sổ của app
+     */
+    focusApp(appId) {
+        const win = this.findByApp(appId);
+        if (win) {
+            if (win.minimized) this.restore(win.id);
+            else this.setActive(win.id);
+            return true;
+        }
+        return false;
+    }
+};
