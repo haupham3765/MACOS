@@ -27,8 +27,12 @@ const WindowManager = {
      * @returns {{ w: number, h: number }}
      */
     calcSize(widthPct, heightPct) {
+        const isMobile = window.innerWidth <= 480;
+        const isTablet = !isMobile && window.innerWidth <= 768;
+        const menuH = isMobile ? 24 : 28;
+        const dockH = isMobile ? 58 : (isTablet ? 68 : 80);
         const desktopW = window.innerWidth;
-        const desktopH = window.innerHeight - 28 - 80; // trừ menu bar (28) và dock (80)
+        const desktopH = window.innerHeight - menuH - dockH;
         return {
             w: Math.round(desktopW * widthPct / 100),
             h: Math.round(desktopH * heightPct / 100)
@@ -44,14 +48,20 @@ const WindowManager = {
     create(appId, title, contentHTML, options = {}) {
         const id = 'win-' + Utils.uid();
         const isMobile = window.innerWidth <= 480;
+        const isTablet = !isMobile && window.innerWidth <= 768;
+
+        // Lấy chiều cao thực tế của menubar và dock theo breakpoint
+        const menuH = isMobile ? 24 : 28;
+        const dockH = isMobile ? 58 : (isTablet ? 68 : 80);
 
         let w, h;
         if (isMobile) {
+            // Mobile: chiếm toàn bộ màn hình (trừ menubar)
             w = window.innerWidth;
-            h = window.innerHeight - 28;
+            h = window.innerHeight - menuH;
         } else {
             const desktopW = window.innerWidth;
-            const desktopH = window.innerHeight - 28 - 80; // trừ menu bar và dock
+            const desktopH = window.innerHeight - menuH - dockH; // trừ menu bar và dock
 
             // Parse width
             if (typeof options.width === 'string' && options.width.endsWith('%')) {
@@ -73,7 +83,7 @@ const WindowManager = {
         }
 
         const x = isMobile ? 0 : (options.x ?? Utils.randInt(30, Math.max(40, window.innerWidth - w - 30)));
-        const y = isMobile ? 28 : (options.y ?? Utils.randInt(34, Math.max(40, 28 + window.innerHeight - 28 - 80 - h)));
+        const y = isMobile ? menuH : (options.y ?? Utils.randInt(menuH + 6, Math.max(menuH + 10, menuH + window.innerHeight - menuH - dockH - h)));
 
         const winEl = document.createElement('div');
         winEl.className = 'window active';
@@ -312,7 +322,8 @@ const WindowManager = {
             const win = this.windows[this.dragState.id];
             if (win) {
                 win.el.style.left = (this.dragState.origX + dx) + 'px';
-                win.el.style.top = Math.max(28, this.dragState.origY + dy) + 'px';
+                const menuH = window.innerWidth <= 480 ? 24 : 28;
+                win.el.style.top = Math.max(menuH, this.dragState.origY + dy) + 'px';
             }
         }
         if (this.resizeState) {
