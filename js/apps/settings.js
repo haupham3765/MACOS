@@ -9,7 +9,7 @@ const SettingsApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('settings', 'Cài đặt hệ thống', html, {
-            width: 650, height: 480
+            width: '62%', height: '78%'
         });
         this.bindEvents();
         return { id: 'settings', winId: this.winId, ramUsage: 40 };

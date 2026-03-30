@@ -17,7 +17,7 @@ const ZaloApp = {
         }
         const html = this.buildHTML();
         this.winId = WindowManager.create('zalo', 'Zalo', html, {
-            width: 700, height: 520
+            width: '68%', height: '82%'
         });
         this.bindEvents();
         this.scrollToBottom();

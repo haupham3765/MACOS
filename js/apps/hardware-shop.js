@@ -10,7 +10,7 @@ const HardwareShopApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('hardware-shop', 'Hardware Shop', html, {
-            width: 650, height: 520
+            width: '62%', height: '82%'
         });
         this.bindEvents();
         return { id: 'hardware-shop', winId: this.winId, ramUsage: 60 };

@@ -14,7 +14,7 @@ const NotesApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('notes', 'Notes', html, {
-            width: 600, height: 420
+            width: '55%', height: '68%'
         });
         this.bindEvents();
         return { id: 'notes', winId: this.winId, ramUsage: 25 };

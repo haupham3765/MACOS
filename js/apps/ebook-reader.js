@@ -12,7 +12,7 @@ const EbookReaderApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('ebook-reader', 'iBooks', html, {
-            width: 650, height: 500
+            width: '62%', height: '80%'
         });
         this.bindEvents();
         return { id: 'ebook-reader', winId: this.winId, ramUsage: 40 };

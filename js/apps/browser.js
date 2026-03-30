@@ -10,7 +10,7 @@ const BrowserApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('browser', 'Safari', html, {
-            width: 800, height: 550
+            width: '75%', height: '85%'
         });
         this.bindEvents();
         this.loadPage('news.vn');

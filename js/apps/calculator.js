@@ -13,7 +13,7 @@ const CalculatorApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('calculator', 'Calculator', html, {
-            width: 280, height: 400
+            width: '22%', height: '62%'
         });
         this.bindEvents();
         return { id: 'calculator', winId: this.winId, ramUsage: 15 };

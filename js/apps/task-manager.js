@@ -10,7 +10,7 @@ const TaskManagerApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('task-manager', 'Task Manager', html, {
-            width: 600, height: 500
+            width: '58%', height: '80%'
         });
         // Cập nhật mỗi giây
         this.updateInterval = setInterval(() => this.update(), 1000);

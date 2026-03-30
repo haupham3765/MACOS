@@ -23,7 +23,7 @@ const FinderApp = {
         `;
 
         const winId = WindowManager.create('finder', 'Finder', html, {
-            width: 750, height: 480
+            width: '72%', height: '78%'
         });
 
         // Render files

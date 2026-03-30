@@ -12,7 +12,7 @@ const InternetManagerApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('internet-manager', 'Downloads', html, {
-            width: 600, height: 450
+            width: '58%', height: '72%'
         });
         this.bindEvents();
         return { id: 'internet-manager', winId: this.winId, ramUsage: 35 };

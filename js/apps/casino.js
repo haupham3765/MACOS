@@ -23,7 +23,7 @@ const CasinoApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('casino', 'Casino Royale', html, {
-            width: 550, height: 550
+            width: '52%', height: '85%'
         });
         this.bindEvents();
         return { id: 'casino', winId: this.winId, ramUsage: 55 };

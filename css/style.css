@@ -445,8 +445,8 @@ html, body {
 /* === WINDOW === */
 .window {
     position: absolute;
-    min-width: 320px;
-    min-height: 200px;
+    min-width: 220px;
+    min-height: 180px;
     background: rgba(30, 30, 30, 0.78);
     backdrop-filter: blur(var(--glass-blur-heavy));
     -webkit-backdrop-filter: blur(var(--glass-blur-heavy));

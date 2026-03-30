@@ -30,7 +30,7 @@ const AssetShopApp = {
 
         const html = this.buildHTML();
         this.winId = WindowManager.create('asset-shop', 'Trading Hub', html, {
-            width: 650, height: 520
+            width: '62%', height: '82%'
         });
         this.bindEvents();
         return { id: 'asset-shop', winId: this.winId, ramUsage: 65 };

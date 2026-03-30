@@ -9,7 +9,7 @@ const AppStoreApp = {
     open() {
         const html = this.buildHTML();
         this.winId = WindowManager.create('app-store', 'App Store', html, {
-            width: 700, height: 550
+            width: '68%', height: '85%'
         });
         this.bindEvents();
         return { id: 'app-store', winId: this.winId, ramUsage: 100 };

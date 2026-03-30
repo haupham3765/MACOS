@@ -21,16 +21,59 @@ const WindowManager = {
     },
 
     /**
+     * Tính kích thước cửa sổ theo tỷ lệ màn hình desktop
+     * @param {number} widthPct - % chiều rộng (0-100) so với vùng desktop
+     * @param {number} heightPct - % chiều cao (0-100) so với vùng desktop
+     * @returns {{ w: number, h: number }}
+     */
+    calcSize(widthPct, heightPct) {
+        const desktopW = window.innerWidth;
+        const desktopH = window.innerHeight - 28 - 80; // trừ menu bar (28) và dock (80)
+        return {
+            w: Math.round(desktopW * widthPct / 100),
+            h: Math.round(desktopH * heightPct / 100)
+        };
+    },
+
+    /**
      * Tạo cửa sổ mới
+     * options.width / options.height có thể là:
+     *   - string kết thúc '%' → tính theo tỷ lệ desktop (ví dụ '70%')
+     *   - number → pixel cố định (fallback)
      */
     create(appId, title, contentHTML, options = {}) {
         const id = 'win-' + Utils.uid();
         const isMobile = window.innerWidth <= 480;
 
-        const w = options.width || (isMobile ? window.innerWidth : 700);
-        const h = options.height || (isMobile ? window.innerHeight - 28 : 500);
-        const x = isMobile ? 0 : (options.x ?? Utils.randInt(50, Math.max(100, window.innerWidth - w - 50)));
-        const y = isMobile ? 28 : (options.y ?? Utils.randInt(40, Math.max(50, window.innerHeight - h - 100)));
+        let w, h;
+        if (isMobile) {
+            w = window.innerWidth;
+            h = window.innerHeight - 28;
+        } else {
+            const desktopW = window.innerWidth;
+            const desktopH = window.innerHeight - 28 - 80; // trừ menu bar và dock
+
+            // Parse width
+            if (typeof options.width === 'string' && options.width.endsWith('%')) {
+                w = Math.round(desktopW * parseFloat(options.width) / 100);
+            } else {
+                w = options.width || 700;
+            }
+
+            // Parse height
+            if (typeof options.height === 'string' && options.height.endsWith('%')) {
+                h = Math.round(desktopH * parseFloat(options.height) / 100);
+            } else {
+                h = options.height || 500;
+            }
+
+            // Đảm bảo không vượt quá vùng desktop
+            w = Math.min(w, desktopW - 20);
+            h = Math.min(h, desktopH - 10);
+        }
+
+        const x = isMobile ? 0 : (options.x ?? Utils.randInt(30, Math.max(40, window.innerWidth - w - 30)));
+        const y = isMobile ? 28 : (options.y ?? Utils.randInt(34, Math.max(40, 28 + window.innerHeight - 28 - 80 - h)));
 
         const winEl = document.createElement('div');
         winEl.className = 'window active';
